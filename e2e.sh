@@ -16,7 +16,7 @@ cmake -B build \
       -DLLVM_BUILD_EXAMPLES=ON \
       -DLLVM_ENABLE_RTTI=ON
 # CMake Build
-cmake --build build -j 30
+cmake --build build -j $(($(nproc) - 2))
 # CMake Test
-cmake --build build --target check-mlir  -j 30
-cmake --build build --target check-clang -j 30
+cmake --build build --target check-mlir  -j $(($(nproc) - 2))
+cmake --build build --target check-clang -j $(($(nproc) - 2))
