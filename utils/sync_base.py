@@ -128,8 +128,9 @@ def find_fork_point():
         sys.exit(1)
 
     # Get all commits on main that are not on llvm-main (local commits)
+    # Using --first-parent to ensure we only get commits from the main branch
     local_commits_output = run_command([
-        "git", "rev-list", "--reverse", f"{fork_point}..main"
+        "git", "rev-list", "--reverse", "--first-parent", f"{fork_point}..main"
     ])
 
     local_commits = []
@@ -138,6 +139,11 @@ def find_fork_point():
 
     print(f"✓ Found fork point: {fork_point}")
     print(f"✓ Found {len(local_commits)} local commits on main branch")
+
+    # Show current structure
+    print("\nCurrent commit structure (last 10 commits):")
+    recent_log = run_command(["git", "log", "--oneline", "-10", "--first-parent"])
+    print(recent_log)
 
     return fork_point, local_commits
 
@@ -337,12 +343,13 @@ def rebase_to_new_base(new_base_commit, patch_files):
         run_command(["git", "reset", "--hard", new_base_commit])
         print(f"✓ Reset main to {new_base_commit[:8]}")
 
-        # Apply patches
+        # Apply patches with committer date preservation
         print(f"\nApplying {len(patch_files)} patches...")
         for i, patch_file in enumerate(patch_files):
             print(f"Applying patch {i+1}/{len(patch_files)}: {os.path.basename(patch_file)}")
             try:
-                run_command(["git", "am", patch_file], capture_output=False)
+                # Use --committer-date-is-author-date to preserve original timestamps
+                run_command(["git", "am", "--committer-date-is-author-date", patch_file], capture_output=False)
             except subprocess.CalledProcessError:
                 print(f"\nERROR: Failed to apply patch {patch_file}")
                 print("You can try to resolve conflicts manually.")
@@ -352,6 +359,11 @@ def rebase_to_new_base(new_base_commit, patch_files):
         print(f"\n✓ Successfully rebased main to {new_base_commit[:8]}")
         print(f"✓ Applied {len(patch_files)} patches")
         print(f"\nYou can delete the backup branch with: git branch -D {backup_branch}")
+
+        # Show the current structure
+        print("\nCurrent commit structure:")
+        recent_log = run_command(["git", "log", "--oneline", "-10", "--graph"])
+        print(recent_log)
 
     except Exception as e:
         print(f"\nERROR: Rebase failed: {e}")
