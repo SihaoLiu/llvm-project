@@ -477,30 +477,39 @@ def main():
 
     print("=== LLVM-CIRCT Base Synchronization Tool ===\n")
 
-    # Step 0: Check we're on main branch with correct tracking
+    # Step 0: Check for dirty working directory first
+    if is_working_directory_dirty():
+        print("ERROR: Working directory has uncommitted changes")
+        print("Please commit or stash your changes before running this script")
+        print("You can use one of the following commands:")
+        print("  git commit -am 'your commit message'  # to commit all changes")
+        print("  git stash                            # to temporarily save changes")
+        sys.exit(1)
+
+    # Step 1: Check we're on main branch with correct tracking
     check_main_branch()
 
-    # Step 1: Ensure llvm-upstream remote exists and update llvm-main
+    # Step 2: Ensure llvm-upstream remote exists and update llvm-main
     print("\n--- Updating LLVM upstream ---")
     ensure_llvm_upstream()
     update_llvm_main()
 
-    # Step 1.5: Ensure clangir-upstream remote exists and update clangir-main
+    # Step 3: Ensure clangir-upstream remote exists and update clangir-main
     print("\n--- Updating ClangIR upstream ---")
     ensure_clangir_upstream()
 
-    # Step 2: Get the latest LLVM commit from CIRCT
+    # Step 4: Get the latest LLVM commit from CIRCT
     print("\n--- Checking CIRCT's LLVM dependency ---")
     circt_commit = get_circt_llvm_commit()
 
-    # Find fork point and get local commits
+    # Step 5: Find fork point and get local commits
     print("\n--- Analyzing fork point ---")
     old_base_commit, local_commits = find_fork_point()
     if not old_base_commit:
         print("ERROR: Could not find fork point")
         sys.exit(1)
 
-    # Step 3: Determine target commit based on --step parameter
+    # Step 6: Determine target commit based on --step parameter
     if args.step is not None:
         new_base_commit = calculate_target_commit(old_base_commit, circt_commit, args.step)
         print(f"\n✓ Using --step {args.step}: target commit is {new_base_commit[:8]}")
@@ -508,39 +517,30 @@ def main():
         new_base_commit = circt_commit
         print(f"\n✓ Using CIRCT's LLVM commit as target: {new_base_commit[:8]}")
 
-    # Step 4: Check if already based on target commit
+    # Step 7: Check if already based on target commit
     if old_base_commit == new_base_commit:
         print(f"\n✓ Main branch is already at target commit {new_base_commit[:8]}")
         report_fork_position(new_base_commit, circt_commit, len(local_commits))
         cleanup_old_backup_branches()
         return
 
-    # Step 5: Check for dirty working directory
-    if is_working_directory_dirty():
-        print("\nERROR: Working directory has uncommitted changes")
-        print("Please commit or stash your changes before running this script")
-        print("You can use one of the following commands:")
-        print("  git commit -am 'your commit message'  # to commit all changes")
-        print("  git stash                            # to temporarily save changes")
-        sys.exit(1)
-
-    # Step 6: Save patches
+    # Step 8: Save patches
     temp_dir = tempfile.mkdtemp()
     try:
         print(f"\nSaving patches to {temp_dir}...")
         patch_files = save_patches(local_commits, temp_dir)
         print(f"✓ Saved {len(patch_files)} patches")
 
-        # Step 7: Verify commits exist in upstream
+        # Step 9: Verify commits exist in upstream
         verify_commits_in_upstream(old_base_commit, new_base_commit)
 
-        # Step 8: Rebase to new base
+        # Step 10: Rebase to new base
         rebase_to_new_base(new_base_commit, patch_files)
 
-        # Step 9: Report fork position
+        # Step 11: Report fork position
         report_fork_position(new_base_commit, circt_commit, len(local_commits))
 
-        # Step 10: Clean up old backup branches
+        # Step 12: Clean up old backup branches
         cleanup_old_backup_branches()
 
     finally:
