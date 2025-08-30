@@ -8,6 +8,11 @@ allowing you to:
 - Move the fork point forward or backward by a specified number of commits
 - Update to the latest llvm-main commit
 All while preserving local modifications on top of the chosen base commit.
+
+Additionally, this script maintains synchronized copies of upstream branches:
+- llvm-main: tracks llvm/llvm-project main branch
+- clangir-main: tracks llvm/clangir main branch
+Both are automatically pushed to origin for team collaboration.
 """
 
 import os
@@ -223,6 +228,59 @@ def ensure_llvm_upstream():
         print("✓ llvm-main is already up to date")
 
 
+def ensure_clangir_upstream():
+    """Ensure clangir-upstream remote exists and fetch it."""
+    remotes = run_command(["git", "remote"]).split('\n')
+    expected_url = "git@github.com:llvm/clangir.git"
+
+    if "clangir-upstream" in remotes:
+        # Check if URL is correct
+        actual_url = get_remote_url("clangir-upstream")
+        if actual_url != expected_url:
+            print(f"ERROR: clangir-upstream remote exists but has wrong URL")
+            print(f"  Expected: {expected_url}")
+            print(f"  Actual:   {actual_url}")
+            sys.exit(1)
+    else:
+        print("Adding clangir-upstream remote...")
+        run_command(["git", "remote", "add", "clangir-upstream", expected_url])
+
+    # Check if clangir-main branch exists
+    try:
+        run_command(["git", "rev-parse", "--verify", "clangir-main"], check=False)
+    except:
+        print("Creating clangir-main branch...")
+        run_command(["git", "fetch", "clangir-upstream", "main"], capture_output=False)
+        run_command(["git", "branch", "clangir-main", "clangir-upstream/main"])
+        print("✓ Created clangir-main branch")
+
+    # Get the current clangir-main commit before update
+    old_clangir_main = None
+    try:
+        old_clangir_main = run_command(["git", "rev-parse", "clangir-main"])
+    except subprocess.CalledProcessError:
+        # clangir-main doesn't exist yet
+        pass
+
+    print("Fetching clangir-upstream/main...")
+    run_command(["git", "fetch", "clangir-upstream", "main:clangir-main"], capture_output=False)
+
+    # Get the new clangir-main commit after update
+    new_clangir_main = run_command(["git", "rev-parse", "clangir-main"])
+
+    # Push to origin if clangir-main was updated
+    if old_clangir_main != new_clangir_main:
+        print("Pushing updated clangir-main to origin...")
+        try:
+            run_command(["git", "push", "origin", "clangir-main:clangir-main"], capture_output=False)
+            print("✓ Pushed clangir-main to origin/clangir-main")
+        except subprocess.CalledProcessError:
+            print("WARNING: Failed to push clangir-main to origin")
+            print("You may need to manually run: git push origin clangir-main:clangir-main")
+    else:
+        print("✓ clangir-main is already up to date")
+
+
 def update_llvm_main():
     """Update llvm-main branch is already done in ensure_llvm_upstream."""
     # The llvm-main branch is already updated via the fetch command
@@ -423,13 +481,20 @@ def main():
     check_main_branch()
 
     # Step 1: Ensure llvm-upstream remote exists and update llvm-main
+    print("\n--- Updating LLVM upstream ---")
     ensure_llvm_upstream()
     update_llvm_main()
 
+    # Step 1.5: Ensure clangir-upstream remote exists and update clangir-main
+    print("\n--- Updating ClangIR upstream ---")
+    ensure_clangir_upstream()
+
     # Step 2: Get the latest LLVM commit from CIRCT
+    print("\n--- Checking CIRCT's LLVM dependency ---")
     circt_commit = get_circt_llvm_commit()
 
     # Find fork point and get local commits
+    print("\n--- Analyzing fork point ---")
     old_base_commit, local_commits = find_fork_point()
     if not old_base_commit:
         print("ERROR: Could not find fork point")
