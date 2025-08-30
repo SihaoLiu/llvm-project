@@ -1,3 +1,19 @@
+# SihaoLiu/llvm-project Repository Overview
+
+This is a special-purpose LLVM repository fork maintained for the following objectives:
+
+1. **Base Synchronization**: Keep the main branch base aligned with the LLVM commit used by CIRCT project to provide optimal CIRCT support.
+
+2. **Feature Integration**: Integrate on top of this base:
+   - Selected features from [ClangIR](https://github.com/llvm/clangir) not yet merged upstream
+   - Custom-developed functionality
+
+3. **Git History Structure**: `[LLVM upstream history] → [CIRCT-tracked commit (fork point)] → [custom commits + ClangIR commits]`
+
+4. **Regular Updates**: Periodically update the fork point based on CIRCT's dependency changes.
+
+---
+
 # The LLVM Compiler Infrastructure
 
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/llvm/llvm-project/badge)](https://securityscorecards.dev/viewer/?uri=github.com/llvm/llvm-project)
