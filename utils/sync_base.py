@@ -73,6 +73,24 @@ def is_working_directory_dirty():
     return False
 
 
+def cleanup_old_backup_branches():
+    """Clean up any old backup branches from previous runs."""
+    # Get all branches
+    branches = run_command(["git", "branch"]).split('\n')
+    backup_branches = []
+
+    for branch in branches:
+        branch = branch.strip().replace('* ', '')
+        if branch.startswith('main-backup-'):
+            backup_branches.append(branch)
+
+    if backup_branches:
+        print(f"\nCleaning up {len(backup_branches)} old backup branch(es)...")
+        for branch in backup_branches:
+            run_command(["git", "branch", "-D", branch])
+            print(f"✓ Deleted old backup branch: {branch}")
+
+
 def check_main_branch():
     """Ensure we're on the main branch tracking origin/main with SihaoLiu in URL."""
     current_branch = get_current_branch()
@@ -351,7 +369,8 @@ def rebase_to_new_base(new_base_commit, patch_files):
             print(f"Applying patch {i+1}/{len(patch_files)}: {os.path.basename(patch_file)}")
             try:
                 # Use --committer-date-is-author-date to preserve original timestamps
-                run_command(["git", "am", "--committer-date-is-author-date", patch_file], capture_output=False)
+                # Use --whitespace=fix to automatically fix whitespace issues
+                run_command(["git", "am", "--committer-date-is-author-date", "--whitespace=fix", patch_file], capture_output=False)
             except subprocess.CalledProcessError:
                 print(f"\nERROR: Failed to apply patch {patch_file}")
                 print("You can try to resolve conflicts manually.")
@@ -360,7 +379,10 @@ def rebase_to_new_base(new_base_commit, patch_files):
 
         print(f"\n✓ Successfully rebased main to {new_base_commit[:8]}")
         print(f"✓ Applied {len(patch_files)} patches")
-        print(f"\nYou can delete the backup branch with: git branch -D {backup_branch}")
+
+        # Delete the backup branch automatically
+        run_command(["git", "branch", "-D", backup_branch])
+        print(f"✓ Deleted backup branch: {backup_branch}")
 
         # Show the current structure
         print("\nCurrent commit structure:")
@@ -425,6 +447,7 @@ def main():
     if old_base_commit == new_base_commit:
         print(f"\n✓ Main branch is already at target commit {new_base_commit[:8]}")
         report_fork_position(new_base_commit, circt_commit, len(local_commits))
+        cleanup_old_backup_branches()
         return
 
     # Step 5: Check for dirty working directory
@@ -451,6 +474,9 @@ def main():
 
         # Step 9: Report fork position
         report_fork_position(new_base_commit, circt_commit, len(local_commits))
+
+        # Step 10: Clean up old backup branches
+        cleanup_old_backup_branches()
 
     finally:
         # Clean up temp directory
