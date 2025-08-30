@@ -232,12 +232,14 @@ def verify_commits_in_upstream(old_base, new_base):
         sys.exit(1)
 
 
-def get_commits_between(from_commit, to_commit, branch="llvm-main"):
-    """Get list of commits between two commits on a branch."""
+def get_commits_between(from_commit, to_commit, branch=None):
+    """Get list of commits between two commits."""
     # Get commits from from_commit (exclusive) to to_commit (inclusive)
-    commits = run_command([
-        "git", "rev-list", "--reverse", f"{from_commit}..{to_commit}", branch
-    ])
+    cmd = ["git", "rev-list", "--reverse", f"{from_commit}..{to_commit}"]
+    if branch:
+        cmd.append(branch)
+
+    commits = run_command(cmd)
 
     if commits:
         return commits.split('\n')
@@ -304,13 +306,13 @@ def report_fork_position(fork_commit, circt_commit, local_commits_count):
             # Check if fork is before CIRCT
             run_command(["git", "merge-base", "--is-ancestor", fork_commit, circt_commit])
             # Fork is before CIRCT, count commits between
-            commits_to_circt = get_commits_between(fork_commit, circt_commit, "llvm-main")
+            commits_to_circt = get_commits_between(fork_commit, circt_commit)
             circt_position = f"(+{len(commits_to_circt)} commits to current)"
         except subprocess.CalledProcessError:
             try:
                 # Check if CIRCT is before fork
                 run_command(["git", "merge-base", "--is-ancestor", circt_commit, fork_commit])
-                commits_from_circt = get_commits_between(circt_commit, fork_commit, "llvm-main")
+                commits_from_circt = get_commits_between(circt_commit, fork_commit)
                 circt_position = f"(-{len(commits_from_circt)} commits to current)"
             except subprocess.CalledProcessError:
                 circt_position = "(on different branch)"
@@ -320,7 +322,7 @@ def report_fork_position(fork_commit, circt_commit, local_commits_count):
     if fork_commit == latest_llvm:
         latest_position = "(at latest)"
     else:
-        commits_to_latest = get_commits_between(fork_commit, latest_llvm, "llvm-main")
+        commits_to_latest = get_commits_between(fork_commit, latest_llvm)
         latest_position = f"(+{len(commits_to_latest)} commits to current)"
 
     # Print report
