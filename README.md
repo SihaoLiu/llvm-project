@@ -2,7 +2,7 @@
 
 This is a special-purpose LLVM repository fork maintained for the following objectives:
 
-1. **Base Synchronization**: Keep the main branch base aligned with the LLVM commit used by CIRCT project to provide optimal CIRCT support.
+1. **Base Synchronization**: Keep the main branch base aligned with the LLVM commit used by [CIRCT project](https://github.com/llvm/circt) to provide optimal CIRCT support.
 
 2. **Feature Integration**: Integrate on top of this base:
    - Selected features from [ClangIR](https://github.com/llvm/clangir) not yet merged upstream
