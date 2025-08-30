@@ -8,7 +8,19 @@ This is a special-purpose LLVM repository fork maintained for the following obje
    - Selected features from [ClangIR](https://github.com/llvm/clangir) not yet merged upstream
    - Custom-developed functionality
 
-3. **Git History Structure**: `[LLVM upstream history] → [CIRCT-tracked commit (fork point)] → [custom commits + ClangIR commits]`
+3. **Git History Structure**: 
+
+```
+*Latest commit*
+↑
+[Custom commits + ClangIR commits]
+↑
+*CIRCT-tracked commit (fork point)*
+↑
+[LLVM upstream history]
+↑
+*LLVM's first commit*
+```
 
 4. **Regular Updates**: Periodically update the fork point based on CIRCT's dependency changes.
 
